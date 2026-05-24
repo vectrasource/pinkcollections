@@ -998,24 +998,56 @@
 
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
-// ============ PRODUCTS DATA ============
-const products = [
-  { id: 1, name: 'Crystal Drop Earrings', category: 'Earrings', price: 299, oldPrice: 499, emoji: '💎', color: '#fdf0f3', badge: 'Best Seller', desc: 'Elegant crystal drop earrings perfect for parties and special occasions. Lightweight and comfortable to wear all day.' },
-  { id: 2, name: 'Floral Hair Clip Set', category: 'Hair Accessories', price: 199, oldPrice: 349, emoji: '🌸', color: '#f0fdf4', badge: 'New', desc: 'Beautiful floral hair clips in a set of 6. Perfect for all hair types. Adds a feminine touch to any hairstyle.' },
-  { id: 3, name: 'Golden Temple Maala', category: 'Necklace', price: 599, oldPrice: 899, emoji: '📿', color: '#fffbeb', badge: 'Sale', desc: 'Traditional golden temple necklace with intricate design. Perfect for festivals, weddings and traditional occasions.' },
-  { id: 4, name: 'Pink Churidar Set', category: 'Party Wear', price: 1299, oldPrice: 1999, emoji: '👗', color: '#fce4ec', badge: 'Hot', desc: 'Stunning pink churidar set with matching dupatta. Perfect for parties and celebrations. Available in sizes S, M, L, XL.' },
-  { id: 5, name: 'Rose Matte Lipstick', category: 'Cosmetics', price: 249, oldPrice: 399, emoji: '💄', color: '#fce4ec', badge: 'New', desc: 'Long-lasting matte lipstick in a beautiful rose shade. Moisturizing formula that keeps lips soft and smooth.' },
-  { id: 6, name: 'Floral Cologne', category: 'Cologne', price: 449, oldPrice: 699, emoji: '🌺', color: '#e3f2fd', badge: 'Popular', desc: 'Light and refreshing floral cologne. Long-lasting fragrance that keeps you feeling fresh all day.' },
-  { id: 7, name: 'Block Heel Sandals', category: 'Footwear', price: 799, oldPrice: 1299, emoji: '👠', color: '#ede7f6', badge: 'Sale', desc: 'Comfortable block heel sandals perfect for parties. Available in sizes 36-41. Multiple colors available.' },
-  { id: 8, name: 'Pink Sling Bag', category: 'Handbags', price: 899, oldPrice: 1499, emoji: '👜', color: '#fff3e0', badge: 'New', desc: 'Trendy pink sling bag with multiple compartments. Perfect for daily use or parties. Vegan leather material.' },
-  { id: 9, name: 'Pearl Drop Earrings', category: 'Earrings', price: 349, oldPrice: 599, emoji: '🤍', color: '#fdf0f3', badge: null, desc: 'Classic pearl drop earrings that go with everything. Hypoallergenic posts suitable for sensitive ears.' },
-  { id: 10, name: 'Butterfly Hair Band', category: 'Hair Accessories', price: 149, oldPrice: 249, emoji: '🦋', color: '#f0fdf4', badge: 'New', desc: 'Cute butterfly hair band in vibrant colors. Suitable for all ages. Gentle on hair, no damage.' },
-  { id: 11, name: 'Blue Anarkali Set', category: 'Party Wear', price: 1599, oldPrice: 2499, emoji: '💙', color: '#e3f2fd', badge: null, desc: 'Gorgeous blue anarkali suit perfect for weddings and parties. Comes with matching bottom and dupatta.' },
-  { id: 12, name: 'Compact Powder Kit', category: 'Cosmetics', price: 349, oldPrice: 549, emoji: '✨', color: '#fce4ec', badge: 'Sale', desc: 'Professional compact powder kit with mirror. Natural finish that lasts all day. Suitable for all skin tones.' },
-];
+// ============ SUPABASE CONFIG ============
+const SUPABASE_URL = 'https://enqqdltgkpiarfdfkfgm.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVucXFkbHRna3BpYXJmZGZrZmdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MTc1MjgsImV4cCI6MjA5NTA5MzUyOH0.VeNmHa-3w1r-jnB6dDqwpSk59gc6PnMnUOjK7FTiYCc';
 
+// ============ PRODUCTS DATA ============
+let products = [];
 let cart = [];
 let currentFilter = 'All';
+
+// Category emoji and color map
+const catStyle = {
+  'Earrings': { emoji: '💎', color: '#fdf0f3' },
+  'Hair Accessories': { emoji: '🌸', color: '#f0fdf4' },
+  'Necklace': { emoji: '📿', color: '#fffbeb' },
+  'Party Wear': { emoji: '👗', color: '#fce4ec' },
+  'Cosmetics': { emoji: '💄', color: '#fce4ec' },
+  'Cologne': { emoji: '🌺', color: '#e3f2fd' },
+  'Footwear': { emoji: '👠', color: '#ede7f6' },
+  'Handbags': { emoji: '👜', color: '#fff3e0' },
+};
+
+async function loadProductsFromSupabase() {
+  const grid = document.getElementById('productsGrid');
+  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--ink-light)">🌸 Loading products...</div>';
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/products?select=*&in_stock=eq.true&order=created_at.desc`, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+    const data = await res.json();
+    products = data.map(p => ({
+      id: p.id,
+      name: p.name,
+      category: p.category,
+      price: p.price,
+      oldPrice: p.old_price,
+      image_url: p.image_url,
+      emoji: catStyle[p.category]?.emoji || '🛍️',
+      color: catStyle[p.category]?.color || '#fdf0f3',
+      badge: p.badge,
+      desc: p.description,
+      in_stock: p.in_stock
+    }));
+    renderProducts(products);
+  } catch(e) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--ink-light)">Unable to load products. Please try again.</div>';
+  }
+}
 
 // ============ RENDER PRODUCTS ============
 function renderProducts(data) {
@@ -1025,11 +1057,13 @@ function renderProducts(data) {
     return;
   }
   grid.innerHTML = data.map(p => `
-    <div class="product-card fade-in" onclick="openProductModal(${p.id})">
-      <div class="product-img" style="background:linear-gradient(135deg,${p.color},white)">
-        ${p.badge ? `<div class="product-badge">${p.badge}</div>` : ''}
-        <button class="wishlist-btn" onclick="event.stopPropagation();showToast('Added to wishlist 💕')">🤍</button>
-        ${p.emoji}
+    <div class="product-card fade-in" onclick="openProductModal('${p.id}')">
+      <div class="product-img" style="background:linear-gradient(135deg,${p.color},white);overflow:hidden;padding:0">
+        ${p.badge ? `<div class="product-badge" style="position:absolute;top:12px;left:12px;z-index:2">${p.badge}</div>` : ''}
+        <button class="wishlist-btn" style="position:absolute;top:12px;right:12px;z-index:2" onclick="event.stopPropagation();showToast('Added to wishlist 💕')">🤍</button>
+        ${p.image_url 
+          ? `<img src="${p.image_url}" style="width:100%;height:100%;object-fit:cover" alt="${p.name}" />`
+          : `<span style="font-size:60px">${p.emoji}</span>`}
       </div>
       <div class="product-info">
         <div class="product-category">${p.category}</div>
@@ -1039,7 +1073,7 @@ function renderProducts(data) {
             <span class="product-price">₹${p.price}</span>
             ${p.oldPrice ? `<span class="product-price-old">₹${p.oldPrice}</span>` : ''}
           </div>
-          <button class="add-cart-btn" onclick="event.stopPropagation();addToCart(${p.id})">+ Add</button>
+          <button class="add-cart-btn" onclick="event.stopPropagation();addToCart('${p.id}')">+ Add</button>
         </div>
       </div>
     </div>
@@ -1077,11 +1111,13 @@ function searchProducts(query) {
 
 // ============ PRODUCT MODAL ============
 function openProductModal(id) {
-  const p = products.find(x => x.id === id);
+  const p = products.find(x => x.id == id || x.id === id);
   if (!p) return;
   
   document.getElementById('modalImg').style.background = `linear-gradient(135deg,${p.color},white)`;
-  document.getElementById('modalImg').innerHTML = p.emoji;
+  document.getElementById('modalImg').innerHTML = p.image_url 
+    ? `<img src="${p.image_url}" style="width:100%;height:100%;object-fit:cover" alt="${p.name}" />`
+    : p.emoji;
   document.getElementById('modalCategory').textContent = p.category;
   document.getElementById('modalName').textContent = p.name;
   document.getElementById('modalPrice').textContent = `₹${p.price}`;
@@ -1101,7 +1137,7 @@ function closeModal(e) {
 
 // ============ CART ============
 function addToCart(id) {
-  const p = products.find(x => x.id === id);
+  const p = products.find(x => x.id == id || x.id === id);
   if (!p) return;
   
   const existing = cart.find(x => x.id === id);
@@ -1261,7 +1297,7 @@ const observer = new IntersectionObserver((entries) => {
 document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
 
 // ============ INIT ============
-renderProducts(products);
+loadProductsFromSupabase();
 </script>
 </body>
 </html>
